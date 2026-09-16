@@ -27,6 +27,13 @@ Le write-up sera publié ici une fois les premiers scénarios de détection en p
   chiffrement polyalphabétique : gestion de la clé, du décalage et des caractères
   hors alphabet.
 
+- [Stéganographie LSB](https://github.com/Makarinoo/lsb-steganography) — dissimulation de données dans les bits de
+  poids faible d'une image : encodage, extraction et limites de la méthode.
+
+
+
+  
+
 ---
 
 ## À propos
