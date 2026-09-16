@@ -23,7 +23,7 @@ Le write-up sera publié ici une fois les premiers scénarios de détection en p
 
 ## Autres dépôts
 
-- [Chiffrement de Vigenère](GITHUB_URL_VIGENERE) — implémentation en Python du
+- [Chiffrement de Vigenère](https://github.com/Makarinoo/lsb-steganography) — implémentation en Python du
   chiffrement polyalphabétique : gestion de la clé, du décalage et des caractères
   hors alphabet.
 
