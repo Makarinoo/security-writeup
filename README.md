@@ -13,7 +13,7 @@ qu'un lecteur puisse reproduire le raisonnement, pas seulement les commandes.
 
 | Document | Sujet |
 |---|---|
-| [Récupération d'un système Linux non bootable](incidents/kali-boot-recovery.md) | Kernel panic dû à un initramfs absent sur une partition `/boot` saturée. Diagnostic, réparation par chroot depuis un environnement live (LVM, bind mounts, `efivars`), réinstallation de GRUB en UEFI. |
+| [Récupération d'un système Linux non bootable](incidents/kali-recuperation-boot.md) | Kernel panic dû à un initramfs absent sur une partition `/boot` saturée. Diagnostic, réparation par chroot depuis un environnement live (LVM, bind mounts, `efivars`), réinstallation de GRUB en UEFI. |
 
 ## Labs
 
