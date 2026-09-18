@@ -17,9 +17,9 @@ qu'un lecteur puisse reproduire le raisonnement, pas seulement les commandes.
 
 ## Labs
 
-Lab Active Directory / SOC en cours de montage : infrastructure virtualisée sous
-Proxmox VE, domaine Active Directory, scénarios offensifs et détection via Wazuh.
-Le write-up sera publié ici une fois les premiers scénarios de détection en place.
+| Document | Sujet |
+|---|---|
+| [Lab SOC / Active Directory](https://github.com/Makarinoo/soc-ad-lab) | Infrastructure virtualisée sous Proxmox VE : réseau de lab isolé derrière OPNsense, domaine `ad.lab.internal` peuplé avec quatre faiblesses volontaires, SIEM Wazuh et Sysmon sur le poste client. Kerberoasting, AS-REP Roasting et DCSync menés depuis Kali, puis détectés par quatre règles personnalisées mappées MITRE ATT&CK. Durcissement des quatre faiblesses et rejeu des attaques pour en vérifier l'effet. |
 
 ## Autres dépôts
 
