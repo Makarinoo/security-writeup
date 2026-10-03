@@ -21,6 +21,12 @@ qu'un lecteur puisse reproduire le raisonnement, pas seulement les commandes.
 |---|---|
 | [Lab SOC / Active Directory](https://github.com/Makarinoo/soc-ad-lab) | Infrastructure virtualisée sous Proxmox VE : réseau de lab isolé derrière OPNsense, domaine `ad.lab.internal` peuplé avec quatre faiblesses volontaires, SIEM Wazuh et Sysmon sur le poste client. Kerberoasting, AS-REP Roasting et DCSync menés depuis Kali, puis détectés par quatre règles personnalisées mappées MITRE ATT&CK. Durcissement des quatre faiblesses et rejeu des attaques pour en vérifier l'effet. |
 
+## Installations
+
+| Document | Sujet |
+|---|---|
+| [Installation d'Arch Linux sur ThinkPad X260](arch-install/arch-install-x260-writeup.md) | Write-up de l'installation d'Arch Linux sur un ThinkPad X260. |
+
 ## Autres dépôts
 
 - [Chiffrement de Vigenère](https://github.com/Makarinoo/Chiffrement-Vigenere) — implémentation en Python du
