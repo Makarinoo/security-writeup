@@ -1,0 +1,5 @@
+*
+!README.md
+!incidents/
+!incidents/*.md
+!.gitignore
