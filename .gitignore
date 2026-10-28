@@ -3,3 +3,5 @@
 !incidents/
 !incidents/*.md
 !.gitignore
+!arch-install/
+!arch-install/*.md

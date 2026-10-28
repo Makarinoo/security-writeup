@@ -4,6 +4,24 @@ Installation manuelle d'Arch sur un ThinkPad X260, en UEFI, avec systemd-boot, p
 
 J'ai noté la procédure telle que je l'ai faite, avec les blocages que j'ai rencontrés. C'est surtout ça qui manque dans les guides habituels.
 
+## Sommaire
+
+1. [Préparation de la clé USB](#1-préparation-de-la-clé-usb-depuis-windows)
+2. [BIOS du X260](#2-bios-du-x260)
+3. [Environnement live](#3-environnement-live)
+4. [Partitionnement](#4-partitionnement)
+5. [Formatage et montage](#5-formatage-et-montage)
+6. [Système de base](#6-système-de-base)
+7. [Configuration dans le chroot](#7-configuration-dans-le-chroot)
+8. [Bootloader systemd-boot](#8-bootloader-systemd-boot)
+9. [Post-installation](#9-post-installation)
+10. [Environnement graphique avec Hyprland](#10-environnement-graphique-avec-hyprland)
+11. [Dotfiles HyDE](#11-dotfiles-hyde)
+12. [PATH et ~/.local/bin](#12-path-et-localbin)
+13. [Batterie : seuils de charge TLP](#13-batterie--seuils-de-charge-tlp)
+- [Récapitulatif des pièges](#récapitulatif-des-pièges)
+- [Ce que je referais](#ce-que-je-referais)
+
 ## Contexte
 
 | | |
@@ -31,12 +49,20 @@ curl -L -o archlinux-2026.10.01-x86_64.iso \
 sha256sum archlinux-2026.10.01-x86_64.iso
 ```
 
+Sous Windows, l'équivalent de `sha256sum` est :
+
+```powershell
+Get-FileHash .\archlinux-2026.10.01-x86_64.iso -Algorithm SHA256
+```
+
 Attendu :
 
 ```
 684ded26c63240ff4a41e8c25ee84ea6da233f557364821f13d12c2b0a9059a5
 Taille : 1 640 497 152 octets
 ```
+
+Limite : l'empreinte vient du même miroir que l'ISO. Elle prouve que le fichier n'a pas été abîmé en route, pas qu'il a bien été publié par Arch. Un miroir compromis servirait les deux. Voir [Ce que je referais](#ce-que-je-referais).
 
 ### Identifier la bonne cible
 
@@ -113,6 +139,8 @@ iwctl station wlan0 get-networks
 iwctl station wlan0 connect "SSID"
 ping -c 3 archlinux.org
 ```
+
+Dans l'ISO, iwd nomme l'interface `wlan0` (à confirmer avec `iwctl device list`). Une fois Arch installé, elle prend son nom stable, `wlp4s0` sur le X260 : c'est celui du tableau de contexte.
 
 `Temporary failure in name resolution` sur un ping est ambigu : ça peut être le DNS, ou l'absence totale de connexion. Pour trancher, pinguer une IP directement avec `ping -c 2 1.1.1.1`. Si ça passe, seul le DNS est en cause. Sinon il n'y a pas de route du tout.
 
@@ -349,7 +377,7 @@ Hyprland a remplacé `hyprland.conf` (hyprlang) par `hyprland.lua` :
 | ≤ 0.54 | seul format |
 | 0.55 | Lua introduit, `.conf` encore accepté |
 | 0.56.1 | `.conf` déprécié |
-| ≥ 0.57 | `.conf` supprimé |
+| ≥ 0.57 | suppression du `.conf` annoncée (pas encore sortie : Arch en est à 0.56.2 au moment où j'écris) |
 
 Trois conséquences pratiques.
 
@@ -428,7 +456,7 @@ Le script ajoute le dépôt tiers Chaotic-AUR à `/etc/pacman.conf`. Ce sont des
 
 ### Faux blocage en fin d'installation
 
-Le script rend la main sans bannière de fin, après plusieurs minutes silencieuses pendant lesquelles il génère les palettes via ImageMagick et reconstruit le cache de polices. Avant d'interrompre, et un Ctrl+C pendant une transaction pacman laisse un verrou et des paquets à moitié installés, vérifier l'activité réelle :
+Le script rend la main sans bannière de fin, après plusieurs minutes silencieuses pendant lesquelles il génère les palettes via ImageMagick et reconstruit le cache de polices. Ne pas l'interrompre trop vite : un Ctrl+C pendant une transaction pacman laisse un verrou et des paquets à moitié installés. Vérifier d'abord l'activité réelle :
 
 ```bash
 top -b -n 1 | head -15
@@ -446,6 +474,24 @@ hyde-shell waybar -S        # sélecteur rofi
 
 `Super`+`Alt`+`↑` et `↓` pour les faire défiler sans passer par le menu.
 
+### Piège : icônes absentes dans la Waybar
+
+Symptôme : la barre n'affiche que des chiffres bruts, sans les icônes de batterie ni de réseau.
+
+Cause : `XDG_CONFIG_HOME` et `XDG_DATA_HOME` n'étaient définis nulle part. La config de Waybar inclut `$XDG_CONFIG_HOME/waybar/includes/includes.json`. Comme la variable est vide, le chemin reste littéral, le fichier n'est jamais trouvé et aucun module personnalisé ne se charge.
+
+Correction : déclarer les variables pour toute la session dans `~/.config/environment.d/10-xdg.conf`, que `systemd --user` lit à la connexion :
+
+```ini
+XDG_CONFIG_HOME=/home/user/.config
+XDG_DATA_HOME=/home/user/.local/share
+XDG_STATE_HOME=/home/user/.local/state
+XDG_CACHE_HOME=/home/user/.cache
+XDG_BIN_HOME=/home/user/.local/bin
+```
+
+Puis se déconnecter et se reconnecter. Si une autre application de HyDE se comporte bizarrement, vérifier d'abord ces variables avec `printenv | grep XDG`.
+
 ## 12. PATH et ~/.local/bin
 
 Plusieurs outils s'installent dans `~/.local/bin`, qui n'est pas dans le PATH par défaut. Le symptôme est un `commande introuvable` juste après une installation pourtant réussie, par exemple avec `hyde-shell` ou `claude`.
@@ -453,6 +499,49 @@ Plusieurs outils s'installent dans `~/.local/bin`, qui n'est pas dans le PATH pa
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
+
+Ça vaut aussi pour les programmes lancés par les raccourcis de Hyprland, mais seulement parce que le `~/.bash_profile` par défaut d'Arch charge `~/.bashrc`, et que Hyprland est démarré depuis cette connexion en TTY. Avec un gestionnaire de connexion graphique (SDDM, GDM), `~/.bashrc` n'est pas lu : il faut alors déclarer le PATH dans `~/.config/environment.d/`, comme pour les variables XDG.
+
+## 13. Batterie : seuils de charge TLP
+
+Le X260 a deux batteries : `BAT0` (interne) et `BAT1` (amovible). Comme le portable reste souvent branché, j'ai limité la charge entre 40 et 80 % pour réduire l'usure.
+
+```bash
+sudo pacman -S tlp
+sudo systemctl enable --now tlp
+```
+
+`/etc/tlp.d/01-thresholds.conf` :
+
+```ini
+# Seuils de charge ThinkPad X260 (double batterie)
+START_CHARGE_THRESH_BAT0=40
+STOP_CHARGE_THRESH_BAT0=80
+START_CHARGE_THRESH_BAT1=40
+STOP_CHARGE_THRESH_BAT1=80
+```
+
+Appliquer puis vérifier ce que le noyau a réellement reçu :
+
+```bash
+sudo tlp start
+cat /sys/class/power_supply/BAT*/charge_control_{start,end}_threshold
+```
+
+### Piège : le mauvais dossier est ignoré sans erreur
+
+TLP 1.10 lit `/etc/tlp.d/`. Un fichier placé dans `/etc/tlp.conf.d/` n'est jamais lu, et rien ne le signale : les seuils restent ceux du constructeur. Seule la lecture de `/sys` (ci-dessus) le révèle.
+
+### Conséquence au quotidien
+
+Branché, la charge s'arrête à 80 % (`Not charging` dans `/sys/class/power_supply/BAT0/status`) et ne reprend que sous 40 %. Pour une charge complète avant un déplacement :
+
+```bash
+sudo tlp fullcharge BAT0
+sudo tlp fullcharge BAT1
+```
+
+Les seuils configurés reviennent tout seuls au redémarrage suivant.
 
 ## Récapitulatif des pièges
 
@@ -468,6 +557,81 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 | 8 | `hyprctl keyword` rejeté | `non-legacy parsers` | utiliser `hyprctl eval` |
 | 9 | Binds flèches inactifs | `Super`+`Q` marche, pas les flèches | capitaliser `Left`, `Right`, `Up`, `Down` |
 | 10 | Commande introuvable | après une installation réussie | ajouter `~/.local/bin` au PATH |
+| 11 | Waybar sans icônes | chiffres bruts seulement | variables XDG dans `~/.config/environment.d/` |
+| 12 | Seuils TLP ignorés | `/sys` affiche encore les valeurs constructeur | fichier dans `/etc/tlp.d/`, pas `/etc/tlp.conf.d/` |
+
+## Ce que je referais
+
+Avec le recul, l'installation fonctionne mais laisse cinq points faibles. Je ne les ai pas encore corrigés sur cette machine.
+
+### 1. Chiffrer le disque
+
+Sans chiffrement, un portable volé se lit en branchant son SSD sur une autre machine. À la réinstallation, je mettrais la partition système en LUKS2 :
+
+```bash
+cryptsetup luksFormat /dev/sda2
+cryptsetup open /dev/sda2 root
+mkfs.ext4 /dev/mapper/root
+mount /dev/mapper/root /mnt
+```
+
+Puis le hook `sd-encrypt` dans `/etc/mkinitcpio.conf`, après `block` :
+
+```
+HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)
+```
+
+et l'entrée systemd-boot qui pointe vers le volume déchiffré :
+
+```
+options rd.luks.name=<UUID de sda2>=root root=/dev/mapper/root rw
+```
+
+### 2. Réactiver Secure Boot avec mes propres clés
+
+Je l'ai désactivé pour démarrer l'ISO et je ne l'ai jamais remis. `sbctl` permet de créer ses propres clés et de signer systemd-boot et le noyau. Il faut d'abord passer Secure Boot en *Setup Mode* dans le BIOS, puis :
+
+```bash
+sudo sbctl create-keys
+sudo sbctl enroll-keys -m        # -m garde les clés Microsoft (firmwares de certaines cartes)
+sudo sbctl sign -s /boot/vmlinuz-linux
+sudo sbctl sign -s /boot/EFI/systemd/systemd-bootx64.efi
+sudo sbctl sign -s /boot/EFI/BOOT/BOOTX64.EFI
+sudo sbctl verify
+```
+
+Le hook pacman de sbctl re-signe ces fichiers à chaque mise à jour. Secure Boot et chiffrement vont ensemble : l'un empêche de démarrer un système modifié, l'autre empêche de lire le disque.
+
+### 3. Vérifier la signature de l'ISO, pas seulement son empreinte
+
+Télécharger aussi `archlinux-2026.10.01-x86_64.iso.sig`, puis :
+
+```bash
+gpg --keyserver-options auto-key-retrieve --verify archlinux-2026.10.01-x86_64.iso.sig
+```
+
+et comparer l'empreinte de la clé affichée avec celle publiée sur la page de téléchargement d'archlinux.org. Depuis une machine déjà sous Arch : `pacman-key -v archlinux-2026.10.01-x86_64.iso.sig`.
+
+### 4. Ne pas laisser de secrets dans l'historique
+
+`nmcli device wifi connect "SSID" password "..."` laisse le mot de passe du Wi-Fi dans `~/.bash_history`. Mieux :
+
+```bash
+nmcli --ask device wifi connect "SSID"
+```
+
+Et une fois sudo vérifié, verrouiller le compte root, qui n'a plus de raison d'avoir un mot de passe utilisable :
+
+```bash
+sudo passwd -l root
+```
+
+### 5. Activer l'entretien automatique
+
+```bash
+sudo systemctl enable systemd-boot-update.service   # met systemd-boot à jour quand systemd change
+sudo systemctl enable --now fstrim.timer            # TRIM hebdomadaire du SSD
+```
 
 ## Durée indicative
 
@@ -482,6 +646,10 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 
 - [Guide d'installation, Arch Wiki](https://wiki.archlinux.org/title/Installation_guide)
 - [ThinkPad X260, Arch Wiki](https://wiki.archlinux.org/title/Lenovo_ThinkPad_X260)
+- [TLP, Arch Wiki](https://wiki.archlinux.org/title/TLP)
+- [XDG Base Directory, Arch Wiki](https://wiki.archlinux.org/title/XDG_Base_Directory)
+- [Chiffrer tout le système, Arch Wiki](https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system)
+- [Secure Boot et sbctl, Arch Wiki](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot)
 - [Documentation Hyprland](https://wiki.hypr.land/)
 - [Migration Lua, discussion Hyprland](https://github.com/hyprwm/Hyprland/discussions/15410)
 - [hyprlang2lua, convertisseur .conf vers Lua](https://github.com/EIonTusk/hyprlang2lua)
